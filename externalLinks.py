@@ -11,9 +11,10 @@ import random
 
 pages = set() #To check the dublicacy of a url
 random.seed(datetime.datetime.now())
+allExtLinks = set()
+allIntLinks = set()
 
-
-def getInternalLinks(soup,includeUrl):
+def getInternalLinks(soup,includeUrl):#returns all internal links
 	includeUrl = "{}://{}".format(urlparse(includeUrl).scheme,urlparse(includeUrl).netloc)
 	internalLinks = []
 	try:
@@ -25,18 +26,21 @@ def getInternalLinks(soup,includeUrl):
 		 	 		  else:
 		 	 	  		   internalLinks.append(link.attrs['href'])
 	except:
-		print('No internalLinks')
+		print('No anchor in internal')
 	return internalLinks
 
-def getExternalLinks(soup,excludeUrl):#it will not contain the url of current site
+def getExternalLinks(soup,excludeUrl):#it will not return the url of current site,return external links
 	externalLinks = []
-	for link in soup.find_all('a',href=re.compile("^(http|www|https)((?!"+excludeUrl+").)*$")):
+	try:
+	   for link in soup.find_all('a',href=re.compile("^(http|www|https)((?!"+excludeUrl+").)*$")):
 		      if link.attrs['href'] is not None:
 		      	    if link.attrs['href'] not in externalLinks:
 		      	    	externalLinks.append(link.attrs['href'])
+	except:
+		print("No anchor in external")
 	return externalLinks
 
-def getRandomExternalLinks(startingPage):
+def getRandomExternalLinks(startingPage): #to get randomly extenal links
 	req = requests.get(startingPage)
 	soup = BeautifulSoup(req.text,'html.parser')
 	externalLinks = getExternalLinks(soup,urlparse(startingPage).netloc)
@@ -51,9 +55,26 @@ def getRandomExternalLinks(startingPage):
 	else:
 		return externalLinks[random.randint(0,len(externalLinks)-1)]
 
-def followExternalOnly(startingSite):
+def followExternalOnly(startingSite):#to start the getRandomlyExternallinks
 	externalLink = getRandomExternalLinks(startingSite)
 	print(externalLink)
 	followExternalOnly(externalLink)
 
-followExternalOnly('http://oreilly.com') #starting url
+def getAllExternalLinks(siteUrl): #to get all external links of a page
+	req = requests.get(siteUrl)
+	soup = BeautifulSoup(req.text,'html.parser')
+	domain = "{}://{}".format(urlparse(siteUrl).scheme,urlparse(siteUrl).netloc)
+	internalLinks = getInternalLinks(soup,domain)
+	externalLinks = getExternalLinks(soup,domain)
+
+	for link in externalLinks:
+		if link not in allExtLinks:
+			  print(link)
+			  allExtLinks.add(link)
+	for link in internalLinks:
+		if link not in allIntLinks:
+			  allIntLinks.add(link)
+			  getAllExternalLinks(link)
+
+allExtLinks.add('http://oreilly.com')
+getAllExternalLinks('http://oreilly.com')
